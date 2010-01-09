@@ -6,7 +6,7 @@ use strict;
 use Test::More;
 use Data::Dumper;
 
-if ( ! defined $ENV{TEST_SOCKET} and !defined $ENV{TEST_SERVER} ) {
+if ( ! defined $ENV{TEST_SOCKET} or !defined $ENV{TEST_SERVER} ) {
     my $msg = 'Author test.  Set $ENV{TEST_SOCKET} and $ENV{TEST_SERVER} to run';
     plan( skip_all => $msg );
 } else {
@@ -54,8 +54,8 @@ for my $key (keys %{$objects_to_test}) {
     is_deeply($data1, $data2, "data integrity with peers added and Column");
 
     $statement = "GET hosts\nLimit: 1";
-    $data1     = $ml->selectall_arrayref($statement, {Slice => 1});
-    $data2     = $ml->selectall_arrayref($statement, {Slice => 1, AddPeer => 1});
+    $data1     = $ml->selectall_arrayref($statement, {Slice => 1, Deepcopy => 1});
+    $data2     = $ml->selectall_arrayref($statement, {Slice => 1, AddPeer => 1, Deepcopy => 1});
     for my $data (@{$data2}) {
         delete $data->{'peer_name'};
         delete $data->{'peer_addr'};
