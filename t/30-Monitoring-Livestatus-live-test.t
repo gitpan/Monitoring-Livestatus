@@ -169,7 +169,7 @@ my $expected_keys = {
                          'current_notification_number','custom_variable_names','custom_variable_values',
                          'description','display_name','downtimes','event_handler','event_handler_enabled',
                          'execution_time','first_notification_delay','flap_detection_enabled','groups',
-                         'has_been_checked','high_flap_threshold','icon_image','icon_image_alt','in_check_period',
+                         'has_been_checked','high_flap_threshold','icon_image','icon_image_alt','icon_image_expanded','in_check_period',
                          'in_notification_period','initial_state','is_executing','is_flapping','last_check',
                          'last_hard_state','last_hard_state_change','last_notification','last_state',
                          'last_state_change','latency','long_plugin_output','low_flap_threshold','max_check_attempts',
@@ -200,6 +200,7 @@ for my $key (sort keys %{$objects_to_test}) {
 
     #########################
     # set downtime for a host and service
+    my $num_downtimes = scalar @{$ml->selectall_arrayref("GET downtimes\nColumns: id")};
     my $firsthost = $ml->selectscalar_value("GET hosts\nColumns: name\nLimit: 1");
     isnt($firsthost, undef, 'get test hostname') or BAIL_OUT($key.': got not test hostname');
     $ml->do('COMMAND ['.time().'] SCHEDULE_HOST_DOWNTIME;'.$firsthost.';'.time().';'.(time()+180).';1;0;180;perl test;perl test: '.$0);
@@ -208,7 +209,7 @@ for my $key (sort keys %{$objects_to_test}) {
     $ml->do('COMMAND ['.time().'] SCHEDULE_SVC_DOWNTIME;'.$firsthost.';'.$firstservice.';'.time().';'.(time()+180).';1;0;180;perl test;perl test: '.$0);
     # sometimes it takes while till the downtime is accepted
     my $waited = 0;
-    while(scalar @{$ml->selectall_arrayref("GET downtimes\nColumns: id")} == 0) {
+    while(scalar @{$ml->selectall_arrayref("GET downtimes\nColumns: id")} < $num_downtimes + 2) {
       print "waiting for the downtime...\n";
       sleep(1);
       $waited++;
@@ -227,8 +228,8 @@ for my $key (sort keys %{$objects_to_test}) {
     # check keys
     for my $type (keys %{$expected_keys}) {
         my $filter = "";
-        $filter  = "Filter: time > ".(time() - 600)."\n" if $type eq 'log';
-        $filter .= "Filter: time < ".(time())."\n"       if $type eq 'log';
+        $filter  = "Filter: time > ".(time() - 3600)."\n" if $type eq 'log';
+        $filter .= "Filter: time < ".(time())."\n"        if $type eq 'log';
         my $expected_keys = get_expected_keys($type);
         my $statement = "GET $type\n".$filter."Limit: 1";
         my $hash_ref  = $ml->selectrow_hashref($statement );
