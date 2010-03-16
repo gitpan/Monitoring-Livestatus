@@ -26,7 +26,6 @@ requires:
   Test::More: 0.87
   Thread::Queue: 2.11
   perl: 5.6.0
-  threads: 1.07
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.44
+version: 0.46

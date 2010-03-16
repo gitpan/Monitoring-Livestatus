@@ -10,7 +10,7 @@ use Monitoring::Livestatus::INET;
 use Monitoring::Livestatus::UNIX;
 use Monitoring::Livestatus::MULTI;
 
-our $VERSION = '0.44';
+our $VERSION = '0.46';
 
 
 =head1 NAME
@@ -282,14 +282,7 @@ sub selectall_arrayref {
     $opt = $self->_lowercase_and_verify_options($opt);
 
     if(defined $self->{'logger'}) {
-        my $d = Data::Dumper->new([$opt]);
-        $d->Indent(0);
-        my $optstring = $d->Dump;
-        $optstring =~ s/^\$VAR1\s+=\s+//mx;
-        $optstring =~ s/;$//mx;
-        my $cleanstatement = $statement;
-        $cleanstatement =~ s/\n/\\n/gmx;
-        $self->{'logger'}->debug('selectall_arrayref("'.$cleanstatement.'", '.$optstring.', '.$limit.')')
+        $self->_log_statement($statement, $opt, $limit);
     }
 
     $result = $self->_send($statement, $opt);
@@ -1270,6 +1263,7 @@ sub _get_error {
     my $codes = {
         '200' => 'OK. Reponse contains the queried data.',
         '201' => 'COMMANDs never return something',
+        '400' => 'The request contains an invalid header.',
         '401' => 'The request contains an invalid header.',
         '402' => 'The request is completely invalid.',
         '403' => 'The request is incomplete.',
@@ -1416,6 +1410,25 @@ sub _lowercase_and_verify_options {
     return($return);
 }
 
+########################################
+sub _log_statement {
+    my $self      = shift;
+    my $statement = shift;
+    my $opt       = shift;
+    my $limit     = shift;
+    my $d = Data::Dumper->new([$opt]);
+    $d->Indent(0);
+    my $optstring = $d->Dump;
+    $optstring =~ s/^\$VAR1\s+=\s+//mx;
+    $optstring =~ s/;$//mx;
+
+    # remove empty lines from statement
+    $statement =~ s/\n+/\n/gmx;
+
+    my $cleanstatement = $statement;
+    $cleanstatement =~ s/\n/\\n/gmx;
+    $self->{'logger'}->debug('selectall_arrayref("'.$cleanstatement.'", '.$optstring.', '.$limit.')')
+}
 
 ########################################
 
