@@ -76,6 +76,7 @@ sub _open {
         }
 
         setsockopt($sock, IPPROTO_TCP, TCP_NODELAY, 1);
+
     };
 
     if($@) {

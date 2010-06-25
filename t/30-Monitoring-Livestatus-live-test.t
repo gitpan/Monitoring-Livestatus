@@ -196,13 +196,14 @@ my $expected_keys = {
                          'check_external_commands','check_host_freshness','check_service_freshness','connections',
                          'connections_rate','enable_event_handlers','enable_flap_detection','enable_notifications',
                          'execute_host_checks','execute_service_checks','forks','forks_rate','host_checks','host_checks_rate','interval_length',
-                         'last_command_check','last_log_rotation','livestatus_version','nagios_pid','neb_callbacks',
+                         'last_command_check','last_log_rotation','livestatus_version','log_messages','log_messages_rate','nagios_pid','neb_callbacks',
                          'neb_callbacks_rate','obsess_over_hosts','obsess_over_services','process_performance_data',
                          'program_start','program_version','requests','requests_rate','service_checks','service_checks_rate'
                        ],
     'timeperiods'   => [ 'name', 'alias' ],
 };
 
+my $author = 'Monitoring::Livestatus test';
 for my $key (sort keys %{$objects_to_test}) {
     my $ml = $objects_to_test->{$key};
     isa_ok($ml, 'Monitoring::Livestatus') or BAIL_OUT("no need to continue without a proper Monitoring::Livestatus object: ".$key);
@@ -218,10 +219,10 @@ for my $key (sort keys %{$objects_to_test}) {
     $num_downtimes = scalar @{$downtimes} if defined $downtimes;
     my $firsthost = $ml->selectscalar_value("GET hosts\nColumns: name\nLimit: 1");
     isnt($firsthost, undef, 'get test hostname') or BAIL_OUT($key.': got not test hostname');
-    $ml->do('COMMAND ['.time().'] SCHEDULE_HOST_DOWNTIME;'.$firsthost.';'.time().';'.(time()+180).';1;0;180;perl test;perl test: '.$0);
+    $ml->do('COMMAND ['.time().'] SCHEDULE_HOST_DOWNTIME;'.$firsthost.';'.time().';'.(time()+300).';1;0;300;'.$author.';perl test: '.$0);
     my $firstservice = $ml->selectscalar_value("GET services\nColumns: description\nFilter: host_name = $firsthost\nLimit: 1");
     isnt($firstservice, undef, 'get test servicename') or BAIL_OUT('got not test servicename');
-    $ml->do('COMMAND ['.time().'] SCHEDULE_SVC_DOWNTIME;'.$firsthost.';'.$firstservice.';'.time().';'.(time()+180).';1;0;180;perl test;perl test: '.$0);
+    $ml->do('COMMAND ['.time().'] SCHEDULE_SVC_DOWNTIME;'.$firsthost.';'.$firstservice.';'.time().';'.(time()+300).';1;0;300;'.$author.';perl test: '.$0);
     # sometimes it takes while till the downtime is accepted
     my $waited = 0;
     while(scalar @{$ml->selectall_arrayref("GET downtimes\nColumns: id")} < $num_downtimes + 2) {
@@ -413,7 +414,6 @@ StatsOr: 2 as all_active_or_unknown";
     undef $lastquery;
     isnt($hash_ref, undef, $key.' test fancy stats query') or
         diag('got error: '.Dumper($hash_ref));
-
 }
 
 
