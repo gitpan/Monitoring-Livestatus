@@ -10,8 +10,9 @@ use Monitoring::Livestatus::INET;
 use Monitoring::Livestatus::UNIX;
 use Monitoring::Livestatus::MULTI;
 use Encode;
+use JSON::XS;
 
-our $VERSION = '0.54';
+our $VERSION = '0.56';
 
 
 =head1 NAME
@@ -825,7 +826,8 @@ sub _send {
 
         # Commands need no additional header
         if($statement !~ m/^COMMAND/mx) {
-            $header .= "Separators: $self->{'line_seperator'} $self->{'column_seperator'} $self->{'list_seperator'} $self->{'host_service_seperator'}\n";
+            #$header .= "ColumnHeaders: on\n";
+            $header .= "OutputFormat: json\n";
             $header .= "ResponseHeader: fixed16\n";
             if($self->{'keepalive'}) {
                 $header .= "KeepAlive: on\n";
@@ -873,58 +875,49 @@ sub _send {
 
     my $limit_start = 0;
     if(defined $opt->{'limit_start'}) { $limit_start = $opt->{'limit_start'}; }
-
-    my @result;
-    my $row_count = 0;
-    ## no critic
-    for my $line (split/$line_seperator/m, $body) {
-        utf8::decode($line);
-        $row_count++;
-        next unless $row_count >= $limit_start;
-
-        if(defined $opt->{'limit_length'}) {
-            last if scalar @result >= $opt->{'limit_length'};
+    #utf8::encode($body);
+    my $result;
+    # fix json output
+    $body =~ s/\],\n\]\n$/]]/mx;
+    eval {
+        $result = decode_json($body);
+    };
+    if($@) {
+        my $message = "ERROR ".$@." in text: '".$body."'\" for statement: '$statement'\n";
+        $self->{'logger'}->error($message) if $self->{'verbose'};
+        if($self->{'errors_are_fatal'}) {
+            croak($message);
         }
-
-        my $row = [ split/$col_seperator/m, $line ];
-        if(defined $with_peers and $with_peers == 1) {
-            unshift @{$row}, $peer_name;
-            unshift @{$row}, $peer_addr;
-            unshift @{$row}, $peer_key;
-        }
-        push @result, $row;
     }
-    ## use critic
 
-    # for querys with column header, no seperate columns will be returned
+    # for querys with column header, no separate columns will be returned
     if(!defined $keys) {
         $self->{'logger'}->warn("got statement without Columns: header!") if $self->{'verbose'};
         if($self->{'warnings'}) {
             carp("got statement without Columns: header! -> ".$statement);
         }
-        $keys = shift @result;
-
-        # remove first element of keys, because its the peer_name
-        if(defined $with_peers and $with_peers == 1) {
-            shift @{$keys};
-            shift @{$keys};
-            shift @{$keys};
-        }
+        $keys = shift @{$result};
     }
 
+    # add peer information?
     if(defined $with_peers and $with_peers == 1) {
         unshift @{$keys}, 'peer_name';
         unshift @{$keys}, 'peer_addr';
         unshift @{$keys}, 'peer_key';
+
+        for my $row (@{$result}) {
+            unshift @{$row}, $peer_name;
+            unshift @{$row}, $peer_addr;
+            unshift @{$row}, $peer_key;
+        }
     }
 
     # set some metadata
     $self->{'meta_data'} = {
-                    'row_count'    => $row_count,
-                    'result_count' => scalar @result,
+                    'result_count' => scalar @${result},
     };
 
-    return({ keys => $keys, result => \@result });
+    return({ keys => $keys, result => $result });
 }
 
 ########################################

@@ -1,6 +1,9 @@
 Revision history for Perl extension Monitoring::Livestatus.
 
 
+0.56  Tue Aug 10 09:45:28 CEST 2010
+	- changed parser from csv to JSON::XS
+
 0.54  Wed Jun 23 16:43:11 CEST 2010
 	- fixed utf8 support
 
