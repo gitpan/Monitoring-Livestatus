@@ -275,6 +275,8 @@ sub create_socket {
     my $type = shift;
     my $listener;
 
+    $SIG{'KILL'} = sub { threads->exit(); };
+
     if($type eq 'unix') {
       print "creating unix socket\n";
       $listener = IO::Socket::UNIX->new(
@@ -296,7 +298,7 @@ sub create_socket {
     }
     while( my $socket = $listener->accept() or die('cannot accept: $!') ) {
         my $recv = "";
-        while(<$socket>) { $recv .= $_; }
+        while(<$socket>) { $recv .= $_; last if $_ eq "\n" }
         my $data;
         my $status = 200;
         if($recv =~ m/^GET .*?\s+Filter:.*?empty/m) {
